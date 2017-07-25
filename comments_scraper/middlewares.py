@@ -60,57 +60,18 @@ class JSMiddleware(object):
         #if request.callback != None:
         self.getDownloaderSettingsBySite(driver, spider.name)
 
+        logger.info(driver.page_source)
+        
         body = driver.page_source
         current_url = driver.current_url
         driver.close()
         return HtmlResponse(current_url, body=body, encoding='utf-8', request=request)
 
     def getDownloaderSettingsBySite(self, driver, spider_name):
-        if spider_name == 'sueddeutsche':
-            logging.info('sueddeutsche parsing arcticle!')
-            logging.info(driver.page_source)
-            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, 'post-list')))
-            logging.info(driver.page_source)
-            #element_present = EC.presence_of_element_located((By.ID, 'post-list'))
-            #wait.until(element_present)
-            #Click button to show more comments
-            self.click_button_repeat(driver, '.load-more__button', 3)
 
         if spider_name == 'faz':
             logging.info('faz parsing arcticle!')
             self.click_button_repeat(driver, '.mehr', 3)
-
-        if spider_name == 'welt':
-            logging.info('welt parsing arcticle!')
-            while True:
-                try:
-                    logging.info("Has tried to find button")
-                    next = driver.find_element_by_link_text("MEHR KOMMENTARE ANZEIGEN")
-                    logging.info("Has found button")
-                    next.click()
-                    logging.info("Has clicked")
-                    time.sleep(3)
-                    logging.info("Has slept")
-                except Exception as e:
-                    logging.warn(e)
-                    break;
-
-            while True:
-                try:
-                    logging.info("trying to find answer buttons")
-
-                    elements = driver.find_elements_by_css_selector('.comment-overlay__cta')
-                    if len(elements) == 0:
-                        logging.info("No buttons found! (no answer comments)")
-                        break;
-                    time.sleep(3)
-                    [button.click() for button in driver.find_elements_by_css_selector('.comment-overlay__cta')]
-                    logging.info("Has clicked %d buttons", len(elements))
-                    time.sleep(3)
-                    logging.info("Has slept")
-                except Exception as e:
-                    logging.warn(e)
-                    break;
 
         if spider_name == 'focus':
             logging.info('focus parsing arcticle!')
