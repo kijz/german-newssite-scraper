@@ -1,0 +1,5 @@
+/comments_scraper/data/*
+/comments_scraper/.scrapy/*
+comments_scraper/comments_scraper/__pycache__/*
+comments_scraper/comments_scraper/spiders/__pycache__/*
+/comments_scraper/ghostdriver.log
