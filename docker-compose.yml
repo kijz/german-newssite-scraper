@@ -1,0 +1,7 @@
+scrapy:
+  image: fkajzer/docker-py:selenium
+  command: bash
+  volumes:
+    - .:/code
+  working_dir: /code
+  restart: always
