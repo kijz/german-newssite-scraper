@@ -7,6 +7,7 @@
 
 from scrapy import signals
 from scrapy.http import HtmlResponse
+'''
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.remote.remote_connection import LOGGER
@@ -14,21 +15,23 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from scrapy.exceptions import IgnoreRequest
+'''
 import logging
 import time
 
+'''
 class JSMiddleware(object):
-    '''
+
     Middleware that deals with javascript loading on faz.net
-    '''
+
     def click_button_repeat(self, driver, button_css, delay):
-        '''
+
         Clicks a button as long as it can be found on the site. Results can be found in driver.
         :param driver: Webdriver
         :param button_css: CSS-selector of the button
         :param delay: Delay between each click
         :return: None
-        '''
+
         while True:
             try:
                 logging.info("Has tried to find button")
@@ -61,7 +64,7 @@ class JSMiddleware(object):
         self.getDownloaderSettingsBySite(driver, spider.name)
 
         logger.info(driver.page_source)
-        
+
         body = driver.page_source
         current_url = driver.current_url
         driver.close()
@@ -97,6 +100,7 @@ class JSMiddleware(object):
                 except Exception as e:
                     logging.warn(e)
                     break;
+'''
 
 class CommentsScraperSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
