@@ -7,7 +7,7 @@
 
 from scrapy import signals
 from scrapy.http import HtmlResponse
-'''
+
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.remote.remote_connection import LOGGER
@@ -15,36 +15,37 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from scrapy.exceptions import IgnoreRequest
-'''
+from random import randint
+
 import logging
 import time
 
-'''
+
 class JSMiddleware(object):
-
+    '''
     Middleware that deals with javascript loading on faz.net
-
-    def click_button_repeat(self, driver, button_css, delay):
-
+    '''
+    def click_button_repeat(self, driver, button_css):
+        '''
         Clicks a button as long as it can be found on the site. Results can be found in driver.
+        Delay will be random 5 - 9
         :param driver: Webdriver
         :param button_css: CSS-selector of the button
-        :param delay: Delay between each click
         :return: None
+        '''
 
         while True:
             try:
-                logging.info("Has tried to find button")
+                logging.info("try button on '{}'".format(driver.current_url))
                 next = driver.find_element_by_css_selector(button_css)
-                logging.info("Has found button")
-                time.sleep(delay)
+                logging.info("found on '{}'".format(driver.current_url))
                 next.click()
-                logging.info("Has clicked")
-                time.sleep(delay)
+                logging.info("clicked on '{}'".format(driver.current_url))
+                time.sleep(randint(5, 9))
                 logging.info("Has slept")
             except Exception as e:
                 logging.warn(e)
-                break;
+                break
 
     def process_request(self, request, spider):
         LOGGER.setLevel(logging.WARNING)
@@ -60,47 +61,53 @@ class JSMiddleware(object):
         wait = WebDriverWait(driver, 10)
         wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
 
-        #if request.callback != None:
         self.getDownloaderSettingsBySite(driver, spider.name)
 
-        logger.info(driver.page_source)
-
-        body = driver.page_source
-        current_url = driver.current_url
+        driver_url = driver.current_url
+        driver_page_source = driver.page_source
         driver.close()
-        return HtmlResponse(current_url, body=body, encoding='utf-8', request=request)
+
+        return HtmlResponse(driver_url, body=driver_page_source, encoding='utf-8', request=request)
 
     def getDownloaderSettingsBySite(self, driver, spider_name):
 
         if spider_name == 'faz':
-            logging.info('faz parsing arcticle!')
-            self.click_button_repeat(driver, '.mehr', 3)
+            logging.info("faz parsing '{}'".format(driver.current_url))
+            time.sleep(30)
+            self.click_button_repeat(driver, '.mehr')
 
         if spider_name == 'focus':
             logging.info('focus parsing arcticle!')
-            self.click_button_repeat(driver, '.moreComments', 4)
+            try:
+                logging.info("try button on '{}'".format(driver.current_url))
+                next = driver.find_element_by_css_selector('.moreComments')
+                logging.info("found button on '{}'".format(driver.current_url))
+                next.click()
+                logging.info("Has clicked")
+                time.sleep(randint(5, 9))
+                logging.info("Has slept")
+            except Exception as e:
+                logging.warn(e)
+
+            self.click_button_repeat(driver, '.moreCommentsAjx')
 
         if spider_name == 'zeit':
             logging.info('zeit parsing arcticle!')
-            while True:
-                try:
-                    logging.info("Has tried to find button")
+            try:
+                logging.info("try button on '{}'".format(driver.current_url))
+                elements = driver.find_elements_by_css_selector('.comment-overlay__cta')
 
-                    elements = driver.find_elements_by_css_selector('.comment-overlay__cta')
-                    if len(elements) == 0:
-                        logging.info("No buttons found! (no answer comments)")
-                        break;
-                    # todo time sleep (random)
-                    time.sleep(3)
-                    [button.click() for button in driver.find_elements_by_css_selector('.comment-overlay__cta')]
+                if len(elements) != 0:
+                    [button.click() for button in elements]
                     logging.info("Has clicked %d buttons", len(elements))
-                    time.sleep(3)
+                    time.sleep(randint(5, 9))
                     logging.info("Has slept")
+                else:
+                    logging.info("No buttons found! (no answer comments)")
 
-                except Exception as e:
-                    logging.warn(e)
-                    break;
-'''
+            except Exception as e:
+                logging.warn(e)
+                pass
 
 class CommentsScraperSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,

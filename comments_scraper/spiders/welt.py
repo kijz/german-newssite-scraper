@@ -14,9 +14,7 @@ class WeltSpider(CrawlSpider):
     name = 'welt'
     allowed_domains = ['welt.de']
     start_urls = ['https://www.welt.de/']
-    #start_urls = ['https://www.welt.de/wirtschaft/article166223744/Fuer-Tesla-beginnt-jetzt-die-Zeit-der-Abrechnung.html']
 
-    #custom_settings = {"DOWNLOADER_MIDDLEWARES": {'comments_scraper.middlewares.JSMiddleware': 543,},}
     api_url = "https://api-co.la.welt.de/api/comments?document-id={}&sort=NEWEST"
     parent_url = "https://api-co.la.welt.de/api/comments?document-id={}&parent-id={}&created-cursor={}"
     api_url_more_comments= "https://api-co.la.welt.de/api/comments?document-id={}&created-cursor={}&sort=NEWEST"
@@ -30,15 +28,10 @@ class WeltSpider(CrawlSpider):
     def parse_site(self, response):
         article_id = self.extract_article_id(response.url)
         url = self.api_url.format(article_id)
+
         yield Request(url, self.parse_comments, method="GET", priority=1)
 
-        article = ArticleItem()
-        article['url'] = response.url
-        #add category to article
-        article['category'] = self.extract_category_from_url(response.url)
-        article['id'] = article_id
-        yield article
-
+        yield self.get_article(response, article_id)
 
     def parse_comments(self, response):
         #data = json.loads(response.body)
@@ -55,9 +48,8 @@ class WeltSpider(CrawlSpider):
             yield comment
 
         if len(comments) >= 10:
-            last_comment = comments[len(comments) - 1]
-            parent_id = ''
             offset = 1
+            last_comment = comments[len(comments) - offset]
             while True:
                 ''' point the array cursor on the last item without parent
                 to make next request on api'''
@@ -83,6 +75,17 @@ class WeltSpider(CrawlSpider):
         #skip first because its already scraped
         for comment in comments[1:]:
             yield comment
+
+    def get_article(self, response, id):
+        time_scraped = time.time()
+
+        article = ArticleItem()
+        article['url'] = response.url
+        article['date'] = response.xpath("//time[@class='c-publish-date']/@datetime").extract_first()
+        article['scraped_time_stamp'] = datetime.datetime.fromtimestamp(time_scraped).strftime('%d.%m.%Y %H:%M')
+        article['category'] = self.extract_category_from_url(response.url)
+        article['id'] = id
+        return article
 
     def extract_article_id(self, url):
         article = re.search('article(\d+)', url).group(1)
