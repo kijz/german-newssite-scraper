@@ -44,7 +44,7 @@ class JSMiddleware(object):
                 time.sleep(randint(5, 9))
                 logging.info("Has slept")
             except Exception as e:
-                logging.warn(e)
+                #logging.warn(e)
                 break
 
     def process_request(self, request, spider):
@@ -87,7 +87,7 @@ class JSMiddleware(object):
                 time.sleep(randint(5, 9))
                 logging.info("Has slept")
             except Exception as e:
-                logging.warn(e)
+                logging.info("No buttons found!")
 
             self.click_button_repeat(driver, '.moreCommentsAjx')
 

@@ -10,7 +10,6 @@ class SueddeutscheSpider(scrapy.Spider):
     start_urls = ['https://disqus.com/api/3.0/forums/listPosts.json?api_key=iNlxwT0sgkkM1yj2AaKnZGVJcSqJcJmdTAwogdoyKW94HQrGpchsWdFlIdtO9rk4&forum=szde']
 
     base_url_comments = "https://disqus.com/api/3.0/forums/listPosts.json?api_key=iNlxwT0sgkkM1yj2AaKnZGVJcSqJcJmdTAwogdoyKW94HQrGpchsWdFlIdtO9rk4&forum=szde&cursor={}"
-    base_url_threads = "https://disqus.com/api/3.0/forums/listThreads.json?api_key=iNlxwT0sgkkM1yj2AaKnZGVJcSqJcJmdTAwogdoyKW94HQrGpchsWdFlIdtO9rk4&forum=szde&cursor={}"
     def parse(self, response):
         response_json = json.loads(response.body.decode())
         rate_limit_remaining = response.headers.get('X-Ratelimit-Remaining').decode()
@@ -27,5 +26,5 @@ class SueddeutscheSpider(scrapy.Spider):
         '''
         if cursor['hasNext']:
             time.sleep(5)
-            next_url = self.base_url.format(cursor['next'])
+            next_url = self.base_url_comments.format(cursor['next'])
             yield Request(next_url, self.parse, method="GET")
