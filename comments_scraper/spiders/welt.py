@@ -10,28 +10,31 @@ import datetime
 import json
 from ast import literal_eval
 
-class WeltSpider(CrawlSpider):
+class WeltSpider(scrapy.Spider):
     name = 'welt'
     allowed_domains = ['welt.de']
-    start_urls = ['https://www.welt.de/']
+    #TODO change limit
+    start_urls = ['https://api-co.la.welt.de/api/documents?sort=MOST_COMMENTED&limit=2']
 
-    api_url = "https://api-co.la.welt.de/api/comments?document-id={}&sort=NEWEST"
-    parent_url = "https://api-co.la.welt.de/api/comments?document-id={}&parent-id={}&created-cursor={}"
-    api_url_more_comments= "https://api-co.la.welt.de/api/comments?document-id={}&created-cursor={}&sort=NEWEST"
+    comments_url = "https://api-co.la.welt.de/api/comments?document-id={}&sort=NEWEST"
+    answers_url = "https://api-co.la.welt.de/api/comments?document-id={}&parent-id={}&created-cursor={}"
+    more_comments_url = "https://api-co.la.welt.de/api/comments?document-id={}&sort=NEWEST&created-cursor={}"
 
-    rules = [
-        Rule(LinkExtractor(allow=['\/\w*\/\w*\/.*\/.*.html']),
-        callback='parse_site',
-        follow=True)
-    ]
+    user_url = "https://api-co.la.welt.de/api/public-users/{}"
+    user_comments_url = "https://api-co.la.welt.de/api/comments?user-id={}&sort=MOST_POPULAR"
+    more_user_comments_url = "https://api-co.la.welt.de/api/comments?user-id={}&sort=MOST_POPULAR&created-cursor={}&likes-cursor={}"
 
-    def parse_site(self, response):
-        article_id = self.extract_article_id(response.url)
-        url = self.api_url.format(article_id)
+    #www.welt.de/{documentId}
+    #https://api-co.la.welt.de/api/public-users/5955202fcff47e0001275c14
+    def parse(self, response):
+        print ("parsing documents... on url {}".format(response.url))
+        formatted_json = response.body.decode()
+        my_json = json.loads(formatted_json)
 
-        yield Request(url, self.parse_comments, method="GET", priority=1)
+        for document in my_json:
+            yield document
 
-        yield self.get_article(response, article_id)
+            yield Request(self.comments_url.format(document['id']), self.parse_comments, method="GET", priority=1)
 
     def parse_comments(self, response):
         #data = json.loads(response.body)
@@ -43,9 +46,11 @@ class WeltSpider(CrawlSpider):
 
         for comment in my_json['comments']:
             if comment['childCount'] > 1:
-                url = self.parent_url.format(comment['documentId'], comment['id'], comment['created'])
+                url = self.answers_url.format(comment['documentId'], comment['id'], comment['created'])
                 yield Request(url, self.parse_anwers, method="GET", priority=100)
-            yield comment
+
+            ''' get to user profile and scraping data '''
+            yield Request(self.user_url.format(comment['user']['id']), self.parse_user, method="GET", priority=100)
 
         if len(comments) >= 10:
             offset = 1
@@ -60,7 +65,7 @@ class WeltSpider(CrawlSpider):
                 except:
                     break
 
-            url = self.api_url_more_comments.format(last_comment['documentId'], last_comment['created'])
+            url = self.more_comments_url.format(last_comment['documentId'], last_comment['created'])
             yield Request(url, self.parse_comments, method="GET", priority=10)
 
     def parse_anwers(self, response):
@@ -74,22 +79,30 @@ class WeltSpider(CrawlSpider):
 
         #skip first because its already scraped
         for comment in comments[1:]:
+            yield Request(self.user_url.format(comment['user']['id']), self.parse_user, method="GET", priority=100)
+
+    def parse_user(self, response):
+        print ("parsing user... on url {}, scraping data now".format(response.url))
+        formatted_json = response.body.decode()
+        user = json.loads(formatted_json)
+
+        yield user
+        if not user['privateProfile']:
+            yield Request(self.user_comments_url.format(user['id']), self.parse_user_comments, method="GET", priority=500)
+
+    def parse_user_comments(self, response):
+        print ("parsing user_comments... on url {}".format(response.url))
+        formatted_json = response.body.decode()
+        my_json = json.loads(formatted_json)
+        comments = my_json['comments']
+
+        for comment in comments:
             yield comment
 
-    def get_article(self, response, id):
-        time_scraped = time.time()
-
-        article = ArticleItem()
-        article['url'] = response.url
-        article['date'] = response.xpath("//time[@class='c-publish-date']/@datetime").extract_first()
-        article['scraped_time_stamp'] = datetime.datetime.fromtimestamp(time_scraped).strftime('%d.%m.%Y %H:%M')
-        article['category'] = self.extract_category_from_url(response.url)
-        article['id'] = id
-        return article
-
-    def extract_article_id(self, url):
-        article = re.search('article(\d+)', url).group(1)
-        return re.search('(\d+)', article).group(1)
+        if len(comments) >= 5:
+            last = comments[-1]
+            url = self.more_user_comments_url.format(last['user']['id'], last['created'], last['likes'])
+            yield Request(url, self.parse_user_comments, method="GET", priority=1000)
 
     def extract_category_from_url(self, url):
         return url.split('/')[3]

@@ -9,87 +9,27 @@ from random import randint
 import logging
 import time
 
-class FazSpider(CrawlSpider):
+class FazSpider(Scrapy.spider):
     name = 'faz'
     allowed_domains = ['faz.net']
-    start_urls = ['http://www.faz.net/aktuell/']
-    custom_settings = {"DOWNLOADER_MIDDLEWARES": {'comments_scraper.middlewares.JSMiddleware': 543,},}
+    start_urls = ['http://www.faz.net/suche/?offset=&cid=&index=&query=&offset=&allboosted=&boostedresultsize=%24boostedresultsize&from=01.07.2017&to=06.08.2017&chkBox_2=on&BTyp=lesermeinungen&author=&username=&sort=date&resultsPerPage=80']
 
-    rules = [
-        Rule(LinkExtractor(allow=['/\w*/\w*/.*.html']),
-        callback='parse_site',
-        follow=True),
-        Rule(LinkExtractor(allow=['/suche/.*']),
-        follow=True)
-    ]
-
-    def parse_site(self, response):
-        article_link = response.url
-        selector_list = response.css('div#TabLesermeinungContent_AlleMeinungen>.LMFuss')
+    base_url = "http://www.faz.net{}"
+    def parse(self, response):
+        selector_list = response.css('div.LeserkommentarInner')
         logging.info("has found {} comments".format(len(selector_list)))
         for selector in selector_list:
-            print (selector)
-            comment = self.create_comment(article_link, selector)
-            yield comment
-        '''
-        LOGGER.setLevel(logging.WARNING)
-        logging.info('PhantomJS for Faz started!')
-        #Create webdriver
-        dcap = dict(DesiredCapabilities.PHANTOMJS)
-        dcap["phantomjs.page.settings.userAgent"] = (
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36")
-        driver = webdriver.PhantomJS(executable_path='/usr/local/bin/phantomjs-2.1.1-linux-x86_64/bin/phantomjs',desired_capabilities=dcap)
-        driver.get(article_link)
 
-        wait = WebDriverWait(driver, 30)
-        wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
-
-        #wait for slow ass site to load...
-        time.sleep(30)
-        #First click button to show more than 5...
-        try:
-            logging.info("try button on '{}'".format(driver.current_url))
-            next = driver.find_element_by_css_selector('.mehr')
-            logging.info("found on '{}'".format(driver.current_url))
-            next.click()
-            logging.info("clicked on '{}'".format(driver.current_url))
-            time.sleep(randint(5, 9))
-            logging.info("Has slept")
-        except Exception as e:
-            logging.info('no more comments button fond')
-
-        selector_list = response.css('div#TabLesermeinungContent_AlleMeinungen>.LMFuss')
-        logging.info("has found {} comments".format(len(selector_list)))
-        for selector in selector_list:
-            print (selector)
-            comment = self.create_comment(article_link, selector)
+            #TODO yield self.get_article()
+            comment = self.create_comment(selector)
             yield comment
 
-        #Then follow the pagination...
-        while True:
-            try:
-                logging.info("try button on '{}'".format(driver.current_url))
-                next = driver.find_element_by_css_selector('.icon-page_finanzen_next')
-                logging.info("found on '{}'".format(driver.current_url))
-                next.click()
-                logging.info("clicked on '{}'".format(driver.current_url))
-                time.sleep(randint(10, 15))
-                logging.info("Has slept")
+        suffix = response.xpath('.//a[@rel="next"]/@href').extract(first)
+        if suffix:
+            next_link = base_url.format(suffix)
+            yield Request(next_link, self.parse, method="GET")
 
-                selector_list = response.css('div#TabLesermeinungContent_AlleMeinungen>.LMFuss')
-                logging.info("has found {} comments".format(len(selector_list)))
-                for selector in selector_list:
-                    print (selector)
-                    comment = self.create_comment(article_link, selector)
-                    yield comment
-
-            except Exception as e:
-                logging.info('no buttons found / end of traversing')
-                break
-        '''
-    
-    def create_comment(self, article_link, comment_selector):
+    def create_comment(self, comment_selector):
         nameArray = comment_selector.xpath('span[@class="Username"]/a/span/span[@class="truncate truncate300"]/text()').extract_first()
 
         comment = CommentItem()
@@ -98,21 +38,21 @@ class FazSpider(CrawlSpider):
             nameArray = nameArray.split()
             comment['fore_name'] = nameArray[0]
             comment['last_name'] = nameArray[1]
-        comment['upvotes'] = comment_selector.xpath('span/span[@class="recommsAmount"]/text()').extract_first()
+        comment['upvotes'] = comment_selector.xpath('.//span[@class="StatusEmpfehlungen"]/text()').extract_first()
         comment['recommendations'] = comment_selector.xpath('span[@class="Username"]/a/span/span[@class="greenTxt truncate bold"]/text()').extract_first()
-        comment['date'] = self.format_date(comment_selector.xpath('span[@class="Username"]/span[@class="grayTxt dateTime"]/text()').extract_first())
-        comment['user_link'] = self.set_faz_link(comment_selector.xpath('span[@class="Username"]/a/@href').extract_first())
+        comment['date'] = self.format_date(comment_selector.xpath('.//span[@class="Datetime"]/text()').extract_first())
+        comment['user_link'] = comment_selector.xpath('.//span[@class="Username"]/a/@href').extract_first()
         comment['article_link'] = article_link
-        comment['title'] = comment_selector.xpath('span[@class="LMFussLink"]/text()').extract_first()
-        comment['content'] = self.glue_string_array(comment_selector.xpath('div[@class="LMText"]/text()').extract())
-        comment['quote'] = self.get_answers(comment_selector.xpath('div[@class="LMText"]/div[@class="LMAntwortWrapper"]/div'))
+        comment['title'] = comment_selector.xpath('.//a[@class="LMArrowDown"]/text()').extract_first()
+        comment['content'] = self.glue_string_array(comment_selector.xpath('.//div[@class="LeserkommentarText"]/text()').extract())
+        comment['quote'] = self.get_answers(comment_selector.xpath('.//div[@class="LeserkommentarAntwort"]/div[@class="LeserkommentarAntwortInner"]'))
         return comment
 
     def get_answers(self, answer_selectors):
         answerArray = []
         if answer_selectors:
             for answer_selector in answer_selectors:
-                answerArray.append(self.create_comment(None, answer_selector))
+                answerArray.append(self.create_comment(answer_selector))
         return answerArray
 
     def format_date(self, date_string):
