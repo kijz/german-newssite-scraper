@@ -14,7 +14,7 @@ class WeltSpider(scrapy.Spider):
     name = 'welt'
     allowed_domains = ['welt.de']
     #TODO change limit
-    start_urls = ['https://api-co.la.welt.de/api/documents?sort=MOST_COMMENTED&limit=2']
+    start_urls = ['https://api-co.la.welt.de/api/documents?sort=MOST_COMMENTED&limit=10']
 
     comments_url = "https://api-co.la.welt.de/api/comments?document-id={}&sort=NEWEST"
     answers_url = "https://api-co.la.welt.de/api/comments?document-id={}&parent-id={}&created-cursor={}"

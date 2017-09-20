@@ -48,7 +48,7 @@ class JSMiddleware(object):
                 break
 
     def process_request(self, request, spider):
-        LOGGER.setLevel(logging.WARNING)
+        #LOGGER.setLevel(logging.WARNING)
 
         logging.info('JS Middleware started!')
         #Create webdriver
@@ -58,8 +58,8 @@ class JSMiddleware(object):
             "(KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36")
         driver = webdriver.PhantomJS(executable_path='/usr/local/bin/phantomjs-2.1.1-linux-x86_64/bin/phantomjs',desired_capabilities=dcap)
         driver.get(request.url)
-        wait = WebDriverWait(driver, 10)
-        wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        #wait = WebDriverWait(driver, 10)
+        #wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
 
         self.getDownloaderSettingsBySite(driver, spider.name)
 
@@ -93,6 +93,7 @@ class JSMiddleware(object):
 
         if spider_name == 'zeit':
             logging.info('zeit parsing arcticle!')
+            time.sleep(3)
             try:
                 logging.info("try button on '{}'".format(driver.current_url))
                 elements = driver.find_elements_by_css_selector('.comment-overlay__cta')

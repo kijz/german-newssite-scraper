@@ -4,11 +4,12 @@ from scrapy.spiders import CrawlSpider, Rule
 from scrapy.http import Request
 from scrapy.linkextractors import LinkExtractor
 from selenium import webdriver
-from comments_scraper.items import CommentItem, ArticleItem
+from comments_scraper.items import CommentItem
 from scrapy.exceptions import IgnoreRequest
 from random import randint
 import logging
 import time
+import datetime
 
 class FazSpider(scrapy.Spider):
     name = 'faz'
@@ -32,8 +33,10 @@ class FazSpider(scrapy.Spider):
 
     def create_comment(self, comment_selector, id = None, article = None):
         nameArray = comment_selector.xpath('div[@class="Status"]//a/span[@class="Username"]/text()').extract_first()
+        time_scraped = time.time()
 
         comment = CommentItem()
+        comment['scraped_time_stamp'] = datetime.datetime.fromtimestamp(time_scraped).strftime('%d.%m.%Y %H:%M')
         comment['user_name'] = comment_selector.xpath('div[@class="Status"]/a/span[@class="userId"]/text()').extract_first()
         if nameArray:
             nameArray = nameArray.split()
@@ -48,6 +51,7 @@ class FazSpider(scrapy.Spider):
         comment['content'] = self.glue_string_array(comment_selector.xpath('p[@class="LeserkommentarText"]/text()').extract())
         comment['quote'] = self.get_answers(comment_selector.xpath('.//div[@class="LeserkommentarAntwortInner"]'), comment['article_id'], comment['article_link'])
 
+        #this i needed for answers...
         if id:
             comment['article_id'] = id
             comment['article_link'] = article
