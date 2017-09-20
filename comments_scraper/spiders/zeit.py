@@ -18,7 +18,7 @@ class ZeitSpider(scrapy.Spider):
     custom_settings = {"DOWNLOADER_MIDDLEWARES": {'comments_scraper.middlewares.JSMiddleware': 400,},}
 
     def parse(self, response):
-        #TODO OBEY has to be commented!!!!
+        #ROBOTSTXT_OBEY = True HAS TO BE COMMENTED IN SETTINGS
         selector_list = response.css('article.teaser-small')
 
         for selector in selector_list:
